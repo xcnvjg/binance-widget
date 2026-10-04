@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">币安总资产小组件</string>
+    <string name="widget_name">币安资产数字</string>
+    <string name="api_key_hint">币安 API Key (仅需开启读取权限)</string>
+    <string name="api_secret_hint">币安 Secret Key</string>
+    <string name="save_and_test">保存并测试拉取</string>
+    <string name="status_ready">就绪，可添加小组件到桌面</string>
+    <string name="refresh_interval">自动刷新间隔 (分钟)</string>
+    <string name="test_connection">测试连接</string>
+</resources>
