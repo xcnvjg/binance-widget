@@ -48,6 +48,13 @@ class BinanceBalanceWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_pure_number)
             views.setTextViewText(R.id.tv_balance_number, balance)
 
+            // 根据小组件实际宽高与数字长度，动态自适应计算最佳字号 (sp)，防止出现省略号
+            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+            val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+            val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+            val dynamicSp = calculateOptimalTextSize(minWidth, minHeight, balance)
+            views.setTextViewTextSize(R.id.tv_balance_number, android.util.TypedValue.COMPLEX_UNIT_SP, dynamicSp)
+
             // 设置点击小组件即可立即刷新
             val intent = Intent(context, BinanceBalanceWidgetProvider::class.java).apply {
                 action = ACTION_MANUAL_REFRESH
@@ -61,6 +68,31 @@ class BinanceBalanceWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        /**
+         * 动态自适应字号算法：根据组件实时分配的 dp 尺寸与字符串长度自适应缩放
+         */
+        private fun calculateOptimalTextSize(widthDp: Int, heightDp: Int, text: String): Float {
+            val len = text.length.coerceAtLeast(1)
+            // 若系统尚未上报真实尺寸，采用保守优雅的默认区间
+            if (widthDp <= 0 || heightDp <= 0) {
+                return when {
+                    len >= 12 -> 13f
+                    len >= 9 -> 16f
+                    len >= 6 -> 20f
+                    else -> 26f
+                }
+            }
+
+            // 每个字符的平均宽度系数约为字号的 0.56 倍
+            val maxSpForWidth = (widthDp * 0.94f) / (len * 0.56f)
+            // 考虑高度约束，通常高度可用 60%
+            val maxSpForHeight = heightDp * 0.60f
+
+            val optimalSp = minOf(maxSpForWidth, maxSpForHeight)
+            // 限制字号在 [11sp, 44sp] 之间，确保 1x1、2x1 也能完整显示纯数字
+            return optimalSp.coerceIn(11f, 44f)
         }
 
         /**
@@ -106,6 +138,17 @@ class BinanceBalanceWidgetProvider : AppWidgetProvider() {
             updateAppWidget(context, appWidgetManager, appWidgetId, balance)
         }
         triggerInstantRefresh(context)
+    }
+
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: android.os.Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        val balance = PreferenceStorage(context).getLastBalance()
+        updateAppWidget(context, appWidgetManager, appWidgetId, balance)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
